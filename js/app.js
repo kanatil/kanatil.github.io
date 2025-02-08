@@ -72,7 +72,7 @@ async function connectToSTM32() {
         }
     }
     else{
-        alert(`Web Serial API not on that browser supported.`);
+        alert(`Web Serial API not supported on that browser.`);
     }
 }
 async function disconnectDevice() {
