@@ -3,27 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>STM32 Configurator</title>
-    <!-- CSS Bağlantısı -->
-    <link rel="stylesheet" href="style.css">
+    <title>Atıl KAN</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div>
-        <h1>STM32 Configurator</h1>
-        <button id="connectButton">Connect to STM32</button>
 
-        <form id="configForm">
-            <label>Motor Min PWM:</label>
-            <input type="number" id="motorMin" value="1000" />
-            <label>Motor Max PWM:</label>
-            <input type="number" id="motorMax" value="2000" />
-            <button type="button" id="updateButton">Update Config</button>
-        </form>
-  
-        <p id="statusMessage">There is no connection yet.</p>
+    <div class="wrapper">
+        <div class="info">
+            <img class="profile-pic" src="img/picture.webp" width="200" />
+            <h1 class="title">Atıl KAN</h1>
+            <p></p>
+        </div>
+
+        <div class="links">
+            
+                <li>
+                    <a href="webserial.html">WebSerialAPI</a>
+                </li>
+            
+        </div>
     </div>
 
-    <!-- JavaScript Bağlantısı -->
-    <script src="app.js"></script>
 </body>
 </html>

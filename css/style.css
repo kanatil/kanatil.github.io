@@ -1,0 +1,98 @@
+html, body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Arial, sans-serif;
+    height: 100%;
+    margin: 0px;
+    padding: 0px;
+    background-color: #d9d9d9;
+}
+
+h1 {
+    color: #111;
+}
+
+p{
+    color: #444;
+}
+
+label{
+    color: #444;
+}
+
+button {
+    background-color: #e2e2e2;
+    color: #000000;
+    border: none;
+    padding: 5px 10px;
+    margin: 10px 0;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+button:hover {
+    background-color: #a5a5a5;
+}
+
+select {
+    background-color: #e2e2e2;
+    color: #000000;
+    border: none;
+    border-radius: 5px;
+}
+
+form {
+    margin-top: 20px;
+}
+
+#statusMessage {
+    font-weight: bold;
+}
+#statusMessage.connectionSuccessfull {
+    color: #5a7b3b;
+}
+#statusMessage.connectionError{
+    color: #9F2F2F;
+}
+
+#deviceMessage.readingSuccessfull {
+    color: #5a5ae8;
+}
+#deviceMessage.readingError {
+    color: #9F2F2F;
+}
+
+.profile-pic{
+    border-radius: 50%;
+}
+
+.links {
+    list-style: none;
+
+    margin: 5px;
+    max-width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+  
+.links li {
+    display:block;
+}
+
+.links a {
+    text-decoration: none;
+}
+
+.info {
+    margin: 5px;
+    max-width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
