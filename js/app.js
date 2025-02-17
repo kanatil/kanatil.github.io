@@ -40,6 +40,11 @@ async function listAvailablePorts() {
 
 }
 
+async function addManuallyDevice() {
+    await navigator.serial.requestPort();
+    listAvailablePorts();
+}
+
 async function connectToDevice() {
     const statusMessage = document.getElementById("statusMessage");
     const portSelect = document.getElementById("portSelect");
@@ -108,6 +113,9 @@ connectButton.addEventListener("click", connectToDevice);
 
 // Add event listener for the refresh button
 document.getElementById("refreshPortsButton").addEventListener("click", listAvailablePorts);
+
+// Add event listener for the addManually button
+document.getElementById("addManually").addEventListener("click", addManuallyDevice);
 
 // Sayfa yüklendiğinde portları listele
 document.addEventListener("DOMContentLoaded", listAvailablePorts);
