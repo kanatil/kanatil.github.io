@@ -1,7 +1,3 @@
-// STM32 cihazından gelen mesajları otomatik okuyan kod
-const stm32VID = 0x0483; // STMicroelectronics VID
-const stm32PIDs = [0x5740, 0x3748]; // STM32 örnek PID'ler
-
 let port;
 let reader;
 
@@ -14,19 +10,25 @@ async function listAvailablePorts() {
         portSelect.innerHTML = ""; // Clear existing options
     
         try {
+            // Request permission for ports (must be inside a user event)
             const ports = await navigator.serial.getPorts();
             if (ports.length === 0) {
                 portSelect.innerHTML = "<option>No available ports</option>";
                 return;
             }
     
+            // Display ports informations
             for (const p of ports) {
                 const option = document.createElement("option");
                 option.value = ports.indexOf(p);
                 const info = await p.getInfo();
+                option.value = 0;
                 option.textContent = `VID: ${info.usbVendorId} PID: ${info.usbProductId}`;
                 portSelect.appendChild(option);
-            }
+            };
+            
+            
+
         } catch (error) {
             console.error("Error listing ports:", error);
         }
@@ -38,7 +40,7 @@ async function listAvailablePorts() {
 
 }
 
-async function connectToSTM32() {
+async function connectToDevice() {
     const statusMessage = document.getElementById("statusMessage");
     const portSelect = document.getElementById("portSelect");
 
@@ -63,8 +65,8 @@ async function connectToSTM32() {
 
             reader = inputStream.getReader();
 
-            // Gelen veriyi sürekli olarak oku
-            readSTM32Messages();
+            // Read data
+            readMessages();
         } catch (error) {
             console.error("Connection failed:", error);
             statusMessage.textContent = "Connection failed: " + error.message;
@@ -75,14 +77,8 @@ async function connectToSTM32() {
         alert(`Web Serial API not supported on that browser.`);
     }
 }
-async function disconnectDevice() {
-    keepReading = false;
-    statusMessage.textContent = "Disconnected";
-    statusMessage.className = "connectionError"
-}
 
-
-async function readSTM32Messages() {
+async function readMessages() {
     const statusMessage = document.getElementById("statusMessage");
 
     while (true) {
@@ -93,7 +89,7 @@ async function readSTM32Messages() {
                 break;
             }
 
-            // STM32'den gelen mesajı göster
+            // Display messages
             console.log("Message from device:", value);
             deviceMessage.textContent = "Response: " + value;
             deviceMessage.className = "readingSuccessfull"
@@ -106,41 +102,12 @@ async function readSTM32Messages() {
     }
 }
 
-
-async function readUntilClosed() {
-    const statusMessage = document.getElementById("statusMessage");
-
-    while(port.readeble && keepReading){
-        reader = port.readeble.getReader();
-        try{
-            while(true){
-                const { value, done } = await reader.read();
-                if(done){
-                    console.log("Stream closed.")
-                    break;
-                }
-                // STM32'den gelen mesajı göster
-                console.log("Message from device:", value);
-                deviceMessage.textContent = "Response: " + value;
-                deviceMessage.className = "readingSuccessfull"
-            }
-        } catch(error){
-            console.error("Error reading from device:", error);
-            deviceMessage.textContent = "Error reading from device: " + error.message;
-            deviceMessage.className = "readingError"
-            break;
-        } finally{
-            reader.releaseLock();
-        }
-    }
-
-    await port.close();
-    reader.cancel();
-}
-
 // Bağlan butonu için event listener
 const connectButton = document.getElementById("connectButton");
-connectButton.addEventListener("click", connectToSTM32);
+connectButton.addEventListener("click", connectToDevice);
+
+// Add event listener for the refresh button
+document.getElementById("refreshPortsButton").addEventListener("click", listAvailablePorts);
 
 // Sayfa yüklendiğinde portları listele
 document.addEventListener("DOMContentLoaded", listAvailablePorts);
