@@ -5,9 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bütçe Takip</title>
-    <meta name="description" content="Kişisel gelir ve gider takip sistemi - Google Drive senkronizasyonlu">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://apis.google.com/js/api.js"></script>
+    <meta name="description" content="Kişisel gelir ve gider takip sistemi - Yerel depolama">
     <style>
         * {
             margin: 0;
@@ -88,97 +86,6 @@
             font-size: 1.2rem;
             font-weight: 600;
             min-width: 150px;
-        }
-
-        .drive-status {
-            background: var(--bg-card);
-            padding: 1rem;
-            border-radius: var(--radius);
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            box-shadow: var(--shadow);
-            flex-wrap: wrap;
-        }
-
-        .drive-status.connected {
-            border-left: 4px solid var(--success);
-        }
-
-        .drive-status.disconnected {
-            border-left: 4px solid var(--danger);
-        }
-
-        .drive-status.syncing {
-            border-left: 4px solid var(--warning);
-        }
-
-        .status-info {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex: 1;
-        }
-
-        .status-icon {
-            font-size: 1.5rem;
-        }
-
-        .status-text h3 {
-            font-size: 0.9rem;
-            margin-bottom: 0.2rem;
-        }
-
-        .status-text p {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
-        .btn-connect {
-            background: linear-gradient(135deg, var(--success) 0%, hsl(142, 71%, 35%) 100%);
-            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-        }
-
-        .btn-connect:hover {
-            box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
-        }
-
-        .sync-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: var(--success);
-            border-radius: 50%;
-            margin-left: 0.5rem;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.3;
-            }
-        }
-
-        .error-banner {
-            background: linear-gradient(135deg, var(--danger) 0%, hsl(0, 84%, 50%) 100%);
-            color: white;
-            padding: 1rem;
-            border-radius: var(--radius);
-            margin-bottom: 1rem;
-            display: none;
-        }
-
-        .error-banner.show {
-            display: block;
-            animation: fadeIn 0.3s ease-in;
         }
 
         .summary {
@@ -461,50 +368,10 @@
                 transform: translateY(0);
             }
         }
-
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .loading-overlay.show {
-            display: flex;
-        }
-
-        .spinner {
-            border: 4px solid var(--border);
-            border-top: 4px solid var(--primary);
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
     </style>
 </head>
 
 <body>
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner"></div>
-    </div>
-
     <div class="container">
         <header>
             <h1>💰 Bütçe Takip</h1>
@@ -515,391 +382,178 @@
             </div>
         </header>
 
-        <div id="errorBanner" class="error-banner"></div>
-
-        <div id="driveStatus" class="drive-status disconnected">
-            <div class="status-info">
-                <div class="status-icon">☁️</div>
-                <div class="status-text">
-                    <h3 id="statusTitle">Google Drive Bağlantısı Yok</h3>
-                    <p id="statusDesc">Verilerinizi senkronize etmek için bağlanın</p>
-                </div>
+        <div class="summary">
+            <div class="summary-card income">
+                <h3>Toplam Gelir</h3>
+                <div class="amount" id="totalIncome">₺0</div>
             </div>
-            <button id="connectBtn" class="btn-connect" onclick="app.handleAuthClick()">Bağlan</button>
+            <div class="summary-card expense">
+                <h3>Toplam Gider</h3>
+                <div class="amount" id="totalExpense">₺0</div>
+            </div>
+            <div class="summary-card balance">
+                <h3>Net Bakiye</h3>
+                <div class="amount" id="netBalance">₺0</div>
+            </div>
         </div>
 
-        <div id="mainContent" style="display: none;">
-            <div class="summary">
-                <div class="summary-card income">
-                    <h3>Toplam Gelir</h3>
-                    <div class="amount" id="totalIncome">₺0</div>
+        <div class="card">
+            <h2>➕ Gelir Ekle</h2>
+            <form id="incomeForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="incomeDesc">Açıklama</label>
+                        <input type="text" id="incomeDesc" required placeholder="Örn: Maaş">
+                    </div>
+                    <div class="form-group">
+                        <label for="incomeAmount">Tutar (₺)</label>
+                        <input type="number" id="incomeAmount" required placeholder="0.00" step="0.01">
+                    </div>
                 </div>
-                <div class="summary-card expense">
-                    <h3>Toplam Gider</h3>
-                    <div class="amount" id="totalExpense">₺0</div>
-                </div>
-                <div class="summary-card balance">
-                    <h3>Net Bakiye</h3>
-                    <div class="amount" id="netBalance">₺0</div>
-                </div>
-            </div>
+                <button type="submit">Gelir Ekle</button>
+            </form>
+        </div>
 
-            <div class="card">
-                <h2>➕ Gelir Ekle</h2>
-                <form id="incomeForm">
+        <div class="card">
+            <h2>➖ Gider Ekle</h2>
+            <form id="expenseForm">
+                <div class="form-group">
+                    <label for="expenseDesc">Açıklama</label>
+                    <input type="text" id="expenseDesc" required placeholder="Örn: Market alışverişi">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="expenseAmount">Tutar (₺)</label>
+                        <input type="number" id="expenseAmount" required placeholder="0.00" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="expenseType">Ödeme Tipi</label>
+                        <select id="expenseType" onchange="app.toggleExpenseOptions()">
+                            <option value="cash">Nakit / Tek Seferlik</option>
+                            <option value="installment">Taksitli</option>
+                            <option value="credit">Kredi Kartı</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="installmentOptions" style="display: none;">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="incomeDesc">Açıklama</label>
-                            <input type="text" id="incomeDesc" required placeholder="Örn: Maaş">
+                            <label for="installmentCount">Taksit Sayısı</label>
+                            <input type="number" id="installmentCount" min="2" value="2">
                         </div>
                         <div class="form-group">
-                            <label for="incomeAmount">Tutar (₺)</label>
-                            <input type="number" id="incomeAmount" required placeholder="0.00" step="0.01">
+                            <label for="installmentStart">İlk Ödeme Tarihi</label>
+                            <input type="date" id="installmentStart">
                         </div>
                     </div>
-                    <button type="submit">Gelir Ekle</button>
-                </form>
-            </div>
+                </div>
 
-            <div class="card">
-                <h2>➖ Gider Ekle</h2>
-                <form id="expenseForm">
-                    <div class="form-group">
-                        <label for="expenseDesc">Açıklama</label>
-                        <input type="text" id="expenseDesc" required placeholder="Örn: Market alışverişi">
-                    </div>
-
+                <div id="creditOptions" style="display: none;">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="expenseAmount">Tutar (₺)</label>
-                            <input type="number" id="expenseAmount" required placeholder="0.00" step="0.01">
+                            <label for="purchaseDate">Harcama Tarihi</label>
+                            <input type="date" id="purchaseDate">
                         </div>
                         <div class="form-group">
-                            <label for="expenseType">Ödeme Tipi</label>
-                            <select id="expenseType" onchange="app.toggleExpenseOptions()">
-                                <option value="cash">Nakit / Tek Seferlik</option>
-                                <option value="installment">Taksitli</option>
-                                <option value="credit">Kredi Kartı</option>
-                            </select>
+                            <label for="cutoffDay">Hesap Kesim Günü</label>
+                            <input type="number" id="cutoffDay" min="1" max="31" value="15">
                         </div>
                     </div>
-
-                    <div id="installmentOptions" style="display: none;">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="installmentCount">Taksit Sayısı</label>
-                                <input type="number" id="installmentCount" min="2" value="2">
-                            </div>
-                            <div class="form-group">
-                                <label for="installmentStart">İlk Ödeme Tarihi</label>
-                                <input type="date" id="installmentStart">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="creditOptions" style="display: none;">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="purchaseDate">Harcama Tarihi</label>
-                                <input type="date" id="purchaseDate">
-                            </div>
-                            <div class="form-group">
-                                <label for="cutoffDay">Hesap Kesim Günü</label>
-                                <input type="number" id="cutoffDay" min="1" max="31" value="15">
-                            </div>
-                        </div>
-                    </div>
-
-                    <button type="submit">Gider Ekle</button>
-                </form>
-            </div>
-
-            <div class="card">
-                <button class="settings-toggle" onclick="app.toggleSettings()">⚙️ Ayarlar</button>
-                <div id="settingsContent" class="settings-content">
-                    <div class="form-group">
-                        <label for="defaultCutoffDay">Varsayılan Kredi Kartı Kesim Günü</label>
-                        <input type="number" id="defaultCutoffDay" min="1" max="31" value="15"
-                            onchange="app.saveSettings()">
-                    </div>
-                    <button onclick="app.manualSync()" style="margin-right: 0.5rem;">🔄 Manuel Senkronizasyon</button>
-                    <button class="btn-danger" onclick="app.signOut()">🚪 Çıkış Yap</button>
                 </div>
-            </div>
 
-            <div class="card">
-                <h2>📊 İşlemler</h2>
-                <div id="transactionsList" class="transactions"></div>
+                <button type="submit">Gider Ekle</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <button class="settings-toggle" onclick="app.toggleSettings()">⚙️ Ayarlar</button>
+            <div id="settingsContent" class="settings-content">
+                <div class="form-group">
+                    <label for="defaultCutoffDay">Varsayılan Kredi Kartı Kesim Günü</label>
+                    <input type="number" id="defaultCutoffDay" min="1" max="31" value="15"
+                        onchange="app.saveSettings()">
+                </div>
+
+                <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem; font-size: 1rem;">Yedekleme</h3>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                    <button onclick="app.exportData()" style="flex: 1; min-width: 150px;">📥 Dışarı Aktar
+                        (JSON)</button>
+                    <button onclick="app.importData()" style="flex: 1; min-width: 150px;">📤 İçeri Aktar (JSON)</button>
+                </div>
+                <input type="file" id="importFileInput" accept=".json" style="display: none;"
+                    onchange="app.handleFileImport(event)">
+
+                <button class="btn-danger" onclick="app.clearAllData()">🗑️ Tüm Verileri Sil</button>
             </div>
+        </div>
+
+        <div class="card">
+            <h2>📊 İşlemler</h2>
+            <div id="transactionsList" class="transactions"></div>
         </div>
     </div>
 
     <script>
-        // ⚠️ ÖNEMLİ: Buraya Google Cloud Console'dan aldığınız Client ID'yi yapıştırın
-        const CLIENT_ID = '423744985578-kgpflnb2h9jgaordhfl329fmiahhdetd.apps.googleusercontent.com';
-        const API_KEY = ''; // API Key gerekmez, OAuth yeterli
-        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
-        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
-        const FILE_NAME = 'butce-data.json';
-
-        let tokenClient;
-        let gapiInited = false;
-        let gisInited = false;
-
         const app = {
             currentDate: new Date(),
             data: {
                 transactions: [],
                 settings: {
                     defaultCutoffDay: 15
-                },
-                metadata: {
-                    lastModified: null,
-                    version: '1.0'
                 }
             },
-            driveFileId: null,
-            syncInterval: null,
-            isAuthenticated: false,
 
-            async init() {
+            init() {
+                this.loadFromLocalStorage();
                 this.updateMonthDisplay();
                 this.setDefaultDates();
                 this.setupForms();
-
-                // Google API'leri yüklenene kadar bekle
-                await this.waitForGoogleAPIs();
+                this.updateDisplay();
             },
 
-            async waitForGoogleAPIs() {
-                const checkInterval = setInterval(() => {
-                    if (gapiInited && gisInited) {
-                        clearInterval(checkInterval);
-                        console.log('Google APIs hazır');
+            loadFromLocalStorage() {
+                const saved = localStorage.getItem('budgetData');
+                if (saved) {
+                    try {
+                        this.data = JSON.parse(saved);
+                        console.log('Veriler localStorage\'dan yüklendi');
+
+                        // Ayarları uygula
+                        if (this.data.settings) {
+                            document.getElementById('defaultCutoffDay').value = this.data.settings.defaultCutoffDay;
+                            document.getElementById('cutoffDay').value = this.data.settings.defaultCutoffDay;
+                        }
+                    } catch (error) {
+                        console.error('Veri yükleme hatası:', error);
                     }
-                }, 100);
-            },
-
-            async handleAuthClick() {
-                if (!tokenClient) {
-                    this.showError('Google API henüz yüklenmedi. Lütfen bekleyin...');
-                    return;
-                }
-
-                tokenClient.callback = async (resp) => {
-                    if (resp.error !== undefined) {
-                        this.showError('Yetkilendirme hatası: ' + resp.error);
-                        throw (resp);
-                    }
-                    this.isAuthenticated = true;
-                    await this.onAuthSuccess();
-                };
-
-                if (gapi.client.getToken() === null) {
-                    tokenClient.requestAccessToken({ prompt: 'consent' });
-                } else {
-                    tokenClient.requestAccessToken({ prompt: '' });
                 }
             },
 
-            async onAuthSuccess() {
-                this.showLoading(true);
+            saveToLocalStorage() {
                 try {
-                    await this.findOrCreateFile();
-                    await this.loadFromDrive();
-                    this.updateConnectionStatus(true);
-                    document.getElementById('mainContent').style.display = 'block';
-                    this.updateDisplay();
-                    this.startAutoSync();
+                    localStorage.setItem('budgetData', JSON.stringify(this.data));
+                    console.log('Veriler localStorage\'a kaydedildi');
                 } catch (error) {
-                    this.showError('Bağlantı hatası: ' + error.message);
-                    console.error(error);
-                } finally {
-                    this.showLoading(false);
+                    console.error('Veri kaydetme hatası:', error);
+                    alert('Veriler kaydedilemedi! Tarayıcı depolama alanı dolu olabilir.');
                 }
-            },
-
-            async findOrCreateFile() {
-                try {
-                    // Dosyayı ara
-                    const response = await gapi.client.drive.files.list({
-                        q: `name='${FILE_NAME}' and trashed=false`,
-                        spaces: 'drive',
-                        fields: 'files(id, name)'
-                    });
-
-                    const files = response.result.files;
-
-                    if (files && files.length > 0) {
-                        this.driveFileId = files[0].id;
-                        console.log('Dosya bulundu:', this.driveFileId);
-                    } else {
-                        // Dosya yoksa oluştur
-                        await this.createNewFile();
-                    }
-                } catch (error) {
-                    console.error('Dosya arama hatası:', error);
-                    throw error;
-                }
-            },
-
-            async createNewFile() {
-                const initialData = {
-                    transactions: [],
-                    settings: {
-                        defaultCutoffDay: 15
-                    },
-                    metadata: {
-                        lastModified: new Date().toISOString(),
-                        version: '1.0'
-                    }
-                };
-
-                const file = new Blob([JSON.stringify(initialData, null, 2)], { type: 'application/json' });
-                const metadata = {
-                    name: FILE_NAME,
-                    mimeType: 'application/json'
-                };
-
-                const form = new FormData();
-                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-                form.append('file', file);
-
-                const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                    method: 'POST',
-                    headers: new Headers({ 'Authorization': 'Bearer ' + gapi.client.getToken().access_token }),
-                    body: form
-                });
-
-                const result = await response.json();
-                this.driveFileId = result.id;
-                console.log('Yeni dosya oluşturuldu:', this.driveFileId);
-            },
-
-            async loadFromDrive() {
-                if (!this.driveFileId) return;
-
-                try {
-                    const response = await gapi.client.drive.files.get({
-                        fileId: this.driveFileId,
-                        alt: 'media'
-                    });
-
-                    const data = response.result;
-                    this.data = data;
-                    console.log('Veriler Drive\'dan yüklendi');
-
-                    // Ayarları uygula
-                    if (this.data.settings) {
-                        document.getElementById('defaultCutoffDay').value = this.data.settings.defaultCutoffDay;
-                        document.getElementById('cutoffDay').value = this.data.settings.defaultCutoffDay;
-                    }
-                } catch (error) {
-                    console.error('Drive\'dan okuma hatası:', error);
-                    this.showError('Veriler okunamadı: ' + error.message);
-                }
-            },
-
-            async saveToDrive() {
-                if (!this.driveFileId || !this.isAuthenticated) return;
-
-                this.data.metadata.lastModified = new Date().toISOString();
-
-                const file = new Blob([JSON.stringify(this.data, null, 2)], { type: 'application/json' });
-
-                try {
-                    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${this.driveFileId}?uploadType=media`, {
-                        method: 'PATCH',
-                        headers: new Headers({
-                            'Authorization': 'Bearer ' + gapi.client.getToken().access_token,
-                            'Content-Type': 'application/json'
-                        }),
-                        body: file
-                    });
-
-                    this.updateSyncStatus();
-                    console.log('Veriler Drive\'a kaydedildi');
-                } catch (error) {
-                    console.error('Drive\'a yazma hatası:', error);
-                    this.showError('Veriler kaydedilemedi: ' + error.message);
-                }
-            },
-
-            startAutoSync() {
-                // Her 30 saniyede bir Drive'dan kontrol et
-                this.syncInterval = setInterval(async () => {
-                    if (this.isAuthenticated) {
-                        await this.loadFromDrive();
-                        this.updateDisplay();
-                    }
-                }, 30000);
-            },
-
-            async manualSync() {
-                this.showLoading(true);
-                try {
-                    await this.loadFromDrive();
-                    this.updateDisplay();
-                    alert('Senkronizasyon tamamlandı!');
-                } catch (error) {
-                    this.showError('Senkronizasyon hatası: ' + error.message);
-                } finally {
-                    this.showLoading(false);
-                }
-            },
-
-            updateConnectionStatus(connected) {
-                const status = document.getElementById('driveStatus');
-                const title = document.getElementById('statusTitle');
-                const desc = document.getElementById('statusDesc');
-                const btn = document.getElementById('connectBtn');
-
-                if (connected) {
-                    status.className = 'drive-status connected';
-                    title.innerHTML = 'Google Drive Bağlı <span class="sync-indicator"></span>';
-                    desc.textContent = 'Verileriniz otomatik senkronize ediliyor';
-                    btn.style.display = 'none';
-                } else {
-                    status.className = 'drive-status disconnected';
-                    title.textContent = 'Google Drive Bağlantısı Yok';
-                    desc.textContent = 'Verilerinizi senkronize etmek için bağlanın';
-                    btn.style.display = 'block';
-                }
-            },
-
-            updateSyncStatus() {
-                const desc = document.getElementById('statusDesc');
-                const now = new Date().toLocaleTimeString('tr-TR');
-                desc.textContent = `Son senkronizasyon: ${now}`;
-            },
-
-            showError(message) {
-                const banner = document.getElementById('errorBanner');
-                banner.textContent = '⚠️ ' + message;
-                banner.classList.add('show');
-                setTimeout(() => {
-                    banner.classList.remove('show');
-                }, 5000);
-            },
-
-            showLoading(show) {
-                const overlay = document.getElementById('loadingOverlay');
-                overlay.classList.toggle('show', show);
             },
 
             setupForms() {
-                document.getElementById('incomeForm').addEventListener('submit', async (e) => {
+                document.getElementById('incomeForm').addEventListener('submit', (e) => {
                     e.preventDefault();
-                    await this.addIncome();
+                    this.addIncome();
                 });
 
-                document.getElementById('expenseForm').addEventListener('submit', async (e) => {
+                document.getElementById('expenseForm').addEventListener('submit', (e) => {
                     e.preventDefault();
-                    await this.addExpense();
+                    this.addExpense();
                 });
             },
 
-            async addIncome() {
+            addIncome() {
                 const desc = document.getElementById('incomeDesc').value;
                 const amount = parseFloat(document.getElementById('incomeAmount').value);
 
@@ -913,22 +567,22 @@
                 };
 
                 this.data.transactions.push(transaction);
-                await this.saveToDrive();
+                this.saveToLocalStorage();
                 this.updateDisplay();
                 document.getElementById('incomeForm').reset();
             },
 
-            async addExpense() {
+            addExpense() {
                 const desc = document.getElementById('expenseDesc').value;
                 const amount = parseFloat(document.getElementById('expenseAmount').value);
                 const type = document.getElementById('expenseType').value;
 
                 if (type === 'installment') {
-                    await this.addInstallmentExpense(desc, amount);
+                    this.addInstallmentExpense(desc, amount);
                 } else if (type === 'credit') {
-                    await this.addCreditExpense(desc, amount);
+                    this.addCreditExpense(desc, amount);
                 } else {
-                    await this.addCashExpense(desc, amount);
+                    this.addCashExpense(desc, amount);
                 }
 
                 this.updateDisplay();
@@ -937,7 +591,7 @@
                 this.setDefaultDates();
             },
 
-            async addCashExpense(desc, amount) {
+            addCashExpense(desc, amount) {
                 const transaction = {
                     id: Date.now(),
                     type: 'expense',
@@ -949,10 +603,10 @@
                 };
 
                 this.data.transactions.push(transaction);
-                await this.saveToDrive();
+                this.saveToLocalStorage();
             },
 
-            async addInstallmentExpense(desc, amount) {
+            addInstallmentExpense(desc, amount) {
                 const count = parseInt(document.getElementById('installmentCount').value);
                 const startDate = new Date(document.getElementById('installmentStart').value);
                 const installmentAmount = amount / count;
@@ -980,10 +634,10 @@
                     this.data.transactions.push(transaction);
                 }
 
-                await this.saveToDrive();
+                this.saveToLocalStorage();
             },
 
-            async addCreditExpense(desc, amount) {
+            addCreditExpense(desc, amount) {
                 const purchaseDate = new Date(document.getElementById('purchaseDate').value);
                 const cutoffDay = parseInt(document.getElementById('cutoffDay').value);
 
@@ -1004,7 +658,7 @@
                 };
 
                 this.data.transactions.push(transaction);
-                await this.saveToDrive();
+                this.saveToLocalStorage();
             },
 
             calculateBillingMonth(purchaseDate, cutoffDay) {
@@ -1018,7 +672,7 @@
                 return this.getMonthKeyFromDate(billingDate);
             },
 
-            async deleteTransaction(id) {
+            deleteTransaction(id) {
                 if (!confirm('Bu işlemi silmek istediğinizden emin misiniz?')) return;
 
                 const transaction = this.data.transactions.find(t => t.id === id);
@@ -1036,7 +690,7 @@
                     this.data.transactions = this.data.transactions.filter(t => t.id !== id);
                 }
 
-                await this.saveToDrive();
+                this.saveToLocalStorage();
                 this.updateDisplay();
             },
 
@@ -1152,10 +806,10 @@
                 content.classList.toggle('active');
             },
 
-            async saveSettings() {
+            saveSettings() {
                 this.data.settings.defaultCutoffDay = parseInt(document.getElementById('defaultCutoffDay').value);
                 document.getElementById('cutoffDay').value = this.data.settings.defaultCutoffDay;
-                await this.saveToDrive();
+                this.saveToLocalStorage();
             },
 
             setDefaultDates() {
@@ -1172,57 +826,136 @@
                 }).format(amount);
             },
 
-            signOut() {
-                if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
-                    const token = gapi.client.getToken();
-                    if (token !== null) {
-                        google.accounts.oauth2.revoke(token.access_token);
-                        gapi.client.setToken('');
+            exportData() {
+                try {
+                    // Veriyi JSON formatında hazırla
+                    const dataToExport = {
+                        ...this.data,
+                        exportDate: new Date().toISOString(),
+                        version: '1.0'
+                    };
+
+                    // JSON string'e çevir
+                    const jsonString = JSON.stringify(dataToExport, null, 2);
+
+                    // Blob oluştur
+                    const blob = new Blob([jsonString], { type: 'application/json' });
+
+                    // İndirme linki oluştur
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+
+                    // Dosya adı: butce-yedek-2026-01-15.json
+                    const today = new Date().toISOString().split('T')[0];
+                    a.download = `butce-yedek-${today}.json`;
+
+                    // İndir
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    alert('✅ Verileriniz başarıyla dışarı aktarıldı!');
+                } catch (error) {
+                    console.error('Dışarı aktarma hatası:', error);
+                    alert('❌ Dışarı aktarma sırasında bir hata oluştu: ' + error.message);
+                }
+            },
+
+            importData() {
+                // Gizli file input'u tetikle
+                document.getElementById('importFileInput').click();
+            },
+
+            handleFileImport(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                // Sadece JSON dosyalarını kabul et
+                if (!file.name.endsWith('.json')) {
+                    alert('❌ Lütfen geçerli bir JSON dosyası seçin!');
+                    return;
+                }
+
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+
+                        // Veri yapısını kontrol et
+                        if (!importedData.transactions || !Array.isArray(importedData.transactions)) {
+                            throw new Error('Geçersiz veri formatı!');
+                        }
+
+                        // Kullanıcıya onay sor
+                        const confirmMessage = `Bu işlem mevcut ${this.data.transactions.length} işleminizin üzerine ` +
+                            `${importedData.transactions.length} işlem yükleyecek.\n\n` +
+                            `Devam etmek istiyor musunuz?`;
+
+                        if (!confirm(confirmMessage)) {
+                            event.target.value = ''; // Input'u temizle
+                            return;
+                        }
+
+                        // Veriyi yükle
+                        this.data = {
+                            transactions: importedData.transactions || [],
+                            settings: importedData.settings || { defaultCutoffDay: 15 }
+                        };
+
+                        // localStorage'a kaydet
+                        this.saveToLocalStorage();
+
+                        // Ayarları uygula
+                        if (this.data.settings) {
+                            document.getElementById('defaultCutoffDay').value = this.data.settings.defaultCutoffDay;
+                            document.getElementById('cutoffDay').value = this.data.settings.defaultCutoffDay;
+                        }
+
+                        // Ekranı güncelle
+                        this.updateDisplay();
+
+                        alert(`✅ ${importedData.transactions.length} işlem başarıyla içeri aktarıldı!`);
+
+                    } catch (error) {
+                        console.error('İçeri aktarma hatası:', error);
+                        alert('❌ Dosya okunamadı: ' + error.message);
+                    } finally {
+                        // Input'u temizle (aynı dosyayı tekrar seçebilmek için)
+                        event.target.value = '';
                     }
-                    this.isAuthenticated = false;
-                    this.updateConnectionStatus(false);
-                    document.getElementById('mainContent').style.display = 'none';
-                    if (this.syncInterval) {
-                        clearInterval(this.syncInterval);
+                };
+
+                reader.onerror = () => {
+                    alert('❌ Dosya okuma hatası!');
+                    event.target.value = '';
+                };
+
+                reader.readAsText(file);
+            },
+
+            clearAllData() {
+                if (confirm('TÜM VERİLERİ SİLMEK İSTEDİĞİNİZDEN EMİN MİSİNİZ?\n\nBu işlem geri alınamaz!')) {
+                    if (confirm('Son kez soruyorum: Tüm gelir ve gider kayıtlarınız silinecek. Devam edilsin mi?')) {
+                        localStorage.removeItem('budgetData');
+                        this.data = {
+                            transactions: [],
+                            settings: {
+                                defaultCutoffDay: 15
+                            }
+                        };
+                        this.updateDisplay();
+                        alert('Tüm veriler silindi.');
                     }
                 }
             }
         };
 
-        // Google API yükleme fonksiyonları
-        function gapiLoaded() {
-            gapi.load('client', initializeGapiClient);
-        }
-
-        async function initializeGapiClient() {
-            await gapi.client.init({
-                discoveryDocs: [DISCOVERY_DOC],
-            });
-            gapiInited = true;
-            console.log('GAPI initialized');
-        }
-
-        function gisLoaded() {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                callback: '', // defined later
-            });
-            gisInited = true;
-            console.log('GIS initialized');
-        }
-
         // Sayfa yüklendiğinde
         window.onload = () => {
             app.init();
-
-            // Google API scriptlerini yükle
-            if (typeof gapi !== 'undefined') {
-                gapiLoaded();
-            }
-            if (typeof google !== 'undefined') {
-                gisLoaded();
-            }
         };
     </script>
 </body>
