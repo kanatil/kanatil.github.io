@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bütçe Takip</title>
     <meta name="description" content="Kişisel gelir ve gider takip sistemi - Yerel depolama">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -368,6 +369,43 @@
                 transform: translateY(0);
             }
         }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        .chart-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .category-badge {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
     </style>
 </head>
 
@@ -427,6 +465,25 @@
                         <label for="expenseAmount">Tutar (₺)</label>
                         <input type="number" id="expenseAmount" required placeholder="0.00" step="0.01">
                     </div>
+                    <div class="form-group">
+                        <label for="expenseCategory">Kategori</label>
+                        <select id="expenseCategory" required>
+                            <option value="Ev">🏠 Ev</option>
+                            <option value="Ev Bakım">🔧 Ev Bakım</option>
+                            <option value="Gıda / Yemek">🍽️ Gıda / Yemek</option>
+                            <option value="Ulaşım">🚗 Ulaşım</option>
+                            <option value="Sağlık">⚕️ Sağlık</option>
+                            <option value="Eğlence">🎉 Eğlence</option>
+                            <option value="Kişisel">👤 Kişisel</option>
+                            <option value="Finansal">💳 Finansal</option>
+                            <option value="Eğitim">📚 Eğitim</option>
+                            <option value="İletişim">📱 İletişim</option>
+                            <option value="Diğer">📦 Diğer</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
                         <label for="expenseType">Ödeme Tipi</label>
                         <select id="expenseType" onchange="app.toggleExpenseOptions()">
@@ -490,7 +547,31 @@
         </div>
 
         <div class="card">
-            <h2>📊 İşlemler</h2>
+            <h2>📊 Görselleştirmeler</h2>
+            <div class="charts-section">
+                <div class="chart-card">
+                    <h3>Bu Ay - Kategorilere Göre Harcamalar</h3>
+                    <div class="chart-container">
+                        <canvas id="monthCategoryChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>Tüm Zamanlar - Kategorilere Göre Harcamalar</h3>
+                    <div class="chart-container">
+                        <canvas id="allTimeCategoryChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card" style="grid-column: 1 / -1;">
+                    <h3>Aylara Göre Harcama Karşılaştırması</h3>
+                    <div class="chart-container" style="height: 400px;">
+                        <canvas id="monthlyComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📋 İşlemler</h2>
             <div id="transactionsList" class="transactions"></div>
         </div>
     </div>
@@ -503,6 +584,11 @@
                 settings: {
                     defaultCutoffDay: 15
                 }
+            },
+            charts: {
+                monthCategory: null,
+                allTimeCategory: null,
+                monthlyComparison: null
             },
 
             init() {
@@ -575,14 +661,15 @@
             addExpense() {
                 const desc = document.getElementById('expenseDesc').value;
                 const amount = parseFloat(document.getElementById('expenseAmount').value);
+                const category = document.getElementById('expenseCategory').value;
                 const type = document.getElementById('expenseType').value;
 
                 if (type === 'installment') {
-                    this.addInstallmentExpense(desc, amount);
+                    this.addInstallmentExpense(desc, amount, category);
                 } else if (type === 'credit') {
-                    this.addCreditExpense(desc, amount);
+                    this.addCreditExpense(desc, amount, category);
                 } else {
-                    this.addCashExpense(desc, amount);
+                    this.addCashExpense(desc, amount, category);
                 }
 
                 this.updateDisplay();
@@ -591,12 +678,13 @@
                 this.setDefaultDates();
             },
 
-            addCashExpense(desc, amount) {
+            addCashExpense(desc, amount, category) {
                 const transaction = {
                     id: Date.now(),
                     type: 'expense',
                     description: desc,
                     amount: amount,
+                    category: category,
                     month: this.getMonthKey(),
                     date: new Date().toISOString(),
                     paymentType: 'cash'
@@ -606,7 +694,7 @@
                 this.saveToLocalStorage();
             },
 
-            addInstallmentExpense(desc, amount) {
+            addInstallmentExpense(desc, amount, category) {
                 const count = parseInt(document.getElementById('installmentCount').value);
                 const startDate = new Date(document.getElementById('installmentStart').value);
                 const installmentAmount = amount / count;
@@ -621,6 +709,7 @@
                         type: 'expense',
                         description: desc,
                         amount: installmentAmount,
+                        category: category,
                         month: this.getMonthKeyFromDate(installmentDate),
                         date: installmentDate.toISOString(),
                         paymentType: 'installment',
@@ -637,7 +726,7 @@
                 this.saveToLocalStorage();
             },
 
-            addCreditExpense(desc, amount) {
+            addCreditExpense(desc, amount, category) {
                 const purchaseDate = new Date(document.getElementById('purchaseDate').value);
                 const cutoffDay = parseInt(document.getElementById('cutoffDay').value);
 
@@ -648,6 +737,7 @@
                     type: 'expense',
                     description: desc,
                     amount: amount,
+                    category: category,
                     month: billingMonth,
                     date: purchaseDate.toISOString(),
                     paymentType: 'credit',
@@ -716,6 +806,7 @@
                 this.updateMonthDisplay();
                 this.updateSummary();
                 this.updateTransactionsList();
+                this.updateCharts();
             },
 
             updateMonthDisplay() {
@@ -765,7 +856,12 @@
 
                 container.innerHTML = monthTransactions.map(t => {
                     let badge = '';
+                    let categoryBadge = '';
                     let meta = new Date(t.date).toLocaleDateString('tr-TR');
+
+                    if (t.type === 'expense' && t.category) {
+                        categoryBadge = `<span class="category-badge">${t.category}</span>`;
+                    }
 
                     if (t.paymentType === 'installment') {
                         badge = `<span class="installment-badge">Taksit ${t.installmentInfo.current}/${t.installmentInfo.total}</span>`;
@@ -780,6 +876,7 @@
                             <div class="transaction-info">
                                 <div class="transaction-desc">
                                     ${t.description}
+                                    ${categoryBadge}
                                     ${badge}
                                 </div>
                                 <div class="transaction-meta">${meta}</div>
@@ -950,6 +1047,250 @@
                         alert('Tüm veriler silindi.');
                     }
                 }
+            },
+
+            getCategoryColors() {
+                return {
+                    'Ev': 'hsl(220, 70%, 60%)',
+                    'Ev Bakım': 'hsl(30, 70%, 60%)',
+                    'Gıda / Yemek': 'hsl(120, 60%, 55%)',
+                    'Ulaşım': 'hsl(200, 70%, 60%)',
+                    'Sağlık': 'hsl(0, 70%, 60%)',
+                    'Eğlence': 'hsl(280, 70%, 60%)',
+                    'Kişisel': 'hsl(320, 70%, 60%)',
+                    'Finansal': 'hsl(160, 60%, 55%)',
+                    'Eğitim': 'hsl(40, 70%, 60%)',
+                    'İletişim': 'hsl(260, 70%, 60%)',
+                    'Diğer': 'hsl(0, 0%, 60%)'
+                };
+            },
+
+            updateCharts() {
+                this.updateMonthCategoryChart();
+                this.updateAllTimeCategoryChart();
+                this.updateMonthlyComparisonChart();
+            },
+
+            updateMonthCategoryChart() {
+                const monthKey = this.getMonthKey();
+                const expenses = this.data.transactions.filter(t => t.type === 'expense' && t.month === monthKey);
+
+                const categoryTotals = {};
+                expenses.forEach(t => {
+                    const category = t.category || 'Diğer';
+                    categoryTotals[category] = (categoryTotals[category] || 0) + t.amount;
+                });
+
+                const categories = Object.keys(categoryTotals);
+                const amounts = Object.values(categoryTotals);
+                const colors = this.getCategoryColors();
+                const backgroundColors = categories.map(cat => colors[cat] || colors['Diğer']);
+
+                if (this.charts.monthCategory) {
+                    this.charts.monthCategory.destroy();
+                }
+
+                const ctx = document.getElementById('monthCategoryChart').getContext('2d');
+                this.charts.monthCategory = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: categories,
+                        datasets: [{
+                            data: amounts,
+                            backgroundColor: backgroundColors,
+                            borderColor: 'hsl(220, 15%, 15%)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: 'hsl(0, 0%, 95%)',
+                                    padding: 15,
+                                    font: {
+                                        size: 11
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        const label = context.label || '';
+                                        const value = this.formatCurrency(context.parsed);
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                        return `${label}: ${value} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            },
+
+            updateAllTimeCategoryChart() {
+                const expenses = this.data.transactions.filter(t => t.type === 'expense');
+
+                const categoryTotals = {};
+                expenses.forEach(t => {
+                    const category = t.category || 'Diğer';
+                    categoryTotals[category] = (categoryTotals[category] || 0) + t.amount;
+                });
+
+                const categories = Object.keys(categoryTotals);
+                const amounts = Object.values(categoryTotals);
+                const colors = this.getCategoryColors();
+                const backgroundColors = categories.map(cat => colors[cat] || colors['Diğer']);
+
+                if (this.charts.allTimeCategory) {
+                    this.charts.allTimeCategory.destroy();
+                }
+
+                const ctx = document.getElementById('allTimeCategoryChart').getContext('2d');
+                this.charts.allTimeCategory = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: categories,
+                        datasets: [{
+                            data: amounts,
+                            backgroundColor: backgroundColors,
+                            borderColor: 'hsl(220, 15%, 15%)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: 'hsl(0, 0%, 95%)',
+                                    padding: 15,
+                                    font: {
+                                        size: 11
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        const label = context.label || '';
+                                        const value = this.formatCurrency(context.parsed);
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                        return `${label}: ${value} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            },
+
+            updateMonthlyComparisonChart() {
+                // Get all unique months from transactions
+                const monthsSet = new Set();
+                this.data.transactions.forEach(t => {
+                    monthsSet.add(t.month);
+                });
+
+                // Sort months
+                const months = Array.from(monthsSet).sort();
+
+                // Get last 12 months or all available months
+                const displayMonths = months.slice(-12);
+
+                // Calculate totals for each month
+                const monthlyData = displayMonths.map(month => {
+                    const monthTransactions = this.data.transactions.filter(t => t.month === month);
+                    const income = monthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+                    const expense = monthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+                    return { month, income, expense };
+                });
+
+                // Format month labels
+                const monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+                const labels = displayMonths.map(m => {
+                    const [year, month] = m.split('-');
+                    return `${monthNames[parseInt(month) - 1]} ${year}`;
+                });
+
+                if (this.charts.monthlyComparison) {
+                    this.charts.monthlyComparison.destroy();
+                }
+
+                const ctx = document.getElementById('monthlyComparisonChart').getContext('2d');
+                this.charts.monthlyComparison = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Gelir',
+                                data: monthlyData.map(d => d.income),
+                                backgroundColor: 'hsla(142, 71%, 45%, 0.8)',
+                                borderColor: 'hsl(142, 71%, 45%)',
+                                borderWidth: 2
+                            },
+                            {
+                                label: 'Gider',
+                                data: monthlyData.map(d => d.expense),
+                                backgroundColor: 'hsla(0, 84%, 60%, 0.8)',
+                                borderColor: 'hsl(0, 84%, 60%)',
+                                borderWidth: 2
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: 'hsl(0, 0%, 70%)',
+                                    callback: (value) => this.formatCurrency(value)
+                                },
+                                grid: {
+                                    color: 'hsla(220, 15%, 25%, 0.3)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: 'hsl(0, 0%, 70%)'
+                                },
+                                grid: {
+                                    color: 'hsla(220, 15%, 25%, 0.3)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: 'hsl(0, 0%, 95%)',
+                                    padding: 15,
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        const label = context.dataset.label || '';
+                                        const value = this.formatCurrency(context.parsed.y);
+                                        return `${label}: ${value}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
             }
         };
 
